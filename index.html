@@ -1,0 +1,98 @@
+<!DOCTYPE html><html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Dental</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial; background: #f0f0f0; margin: 0; padding: 0; }
+    header { background: #2c3e50; color: white; padding: 1em; text-align: center; }
+    main { display: flex; flex-wrap: wrap; justify-content: center; gap: 2em; padding: 2em; }
+    section { background: white; padding: 1em; border-radius: 10px; width: 350px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { color: #2c3e50; }
+    input, select, button { width: 100%; margin-top: 0.5em; padding: 0.5em; border-radius: 5px; border: 1px solid #ccc; }
+    button { background: #27ae60; color: white; border: none; cursor: pointer; }
+    #map { height: 200px; margin-top: 1em; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Smart Dental - النظام الذكي لصحة الأسنان</h1>
+  </header>  <main>
+    <!-- واجهة المريض -->
+    <section>
+      <h2>واجهة المريض</h2>
+      <input type="text" id="name" placeholder="الاسم">
+      <input type="number" id="age" placeholder="العمر">
+      <input type="text" id="governorate" placeholder="المحافظة">
+      <input type="text" id="diseases" placeholder="أمراض مزمنة (إن وجدت)">
+      <input type="file" id="image" accept="image/*">
+      <button onclick="sendCase()">أرسل حالتي</button>
+      <button onclick="alert('جاري الاتصال بالطبيب...')">اتصل بالطبيب مجانًا</button>
+      <div id="map"></div>
+    </section><!-- لوحة الطبيب -->
+<section>
+  <h2>لوحة الطبيب</h2>
+  <div id="cases"></div>
+</section>
+
+  </main>  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>  <script>
+    const firebaseConfig = {
+      apiKey: "AIza...YOUR_API_KEY",
+      authDomain: "smart-dental.firebaseapp.com",
+      databaseURL: "https://smart-dental.firebaseio.com",
+      projectId: "smart-dental",
+      storageBucket: "smart-dental.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcd1234"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const map = L.map('map').setView([26.8206, 30.8025], 6); // موقع مصر
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        L.marker([lat, lng]).addTo(map).bindPopup("موقعك الحالي").openPopup();
+        map.setView([lat, lng], 10);
+      });
+    }
+
+    function sendCase() {
+      const data = {
+        name: document.getElementById('name').value,
+        age: document.getElementById('age').value,
+        governorate: document.getElementById('governorate').value,
+        diseases: document.getElementById('diseases').value,
+        timestamp: Date.now()
+      };
+      db.ref('cases').push(data).then(() => alert('تم إرسال الحالة للطبيب'));
+    }
+
+    db.ref('cases').on('child_added', snap => {
+      const c = snap.val();
+      const box = document.createElement('div');
+      box.style.border = "1px solid #ccc";
+      box.style.marginTop = "1em";
+      box.style.padding = "0.5em";
+      box.innerHTML = `
+        <p><strong>الاسم:</strong> ${c.name}</p>
+        <p><strong>العمر:</strong> ${c.age}</p>
+        <p><strong>المحافظة:</strong> ${c.governorate}</p>
+        <p><strong>أمراض مزمنة:</strong> ${c.diseases}</p>
+        <select>
+          <option>آمنة</option>
+          <option>متوسطة</option>
+          <option selected>طارئة</option>
+        </select>
+        <button onclick="alert('تم إرسال سيارة الطوارئ')">إرسال سيارة طوارئ</button>
+      `;
+      document.getElementById('cases').appendChild(box);
+    });
+  </script></body>
+        </html>
