@@ -92,7 +92,61 @@
         </select>
         <button onclick="alert('تم إرسال سيارة الطوارئ')">إرسال سيارة طوارئ</button>
       `;
-      document.getElementById('cases').appendChild(box);
-    });
+      document.getElementById('cases').appendChild(box)
+<a href="tel:01095896349" style="padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 8px;">
+📞 اتصل بنا
+</a>
+<select id="governorate" onchange="getLocation()">
+  <option value="">اختر المحافظة</option>
+  <option value="القاهرة">القاهرة</option>
+  <option value="الجيزة">الجيزة</option>
+  <option value="الإسكندرية">الإسكندرية</option>
+  <!-- ضيف باقي المحافظات هنا -->
+</select>
+
+<p id="locationResult">📍 لم يتم تحديد الموقع بعد</p>
+
+<script>
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(showPosition);
+  } else {
+    document.getElementById("locationResult").innerHTML = "المتصفح لا يدعم تحديد الموقع.";
+  }
+}
+
+function showPosition(position) {
+  document.getElementById("locationResult").innerHTML =
+    "📍 إحداثيات الموقع: " + position.coords.latitude + ", " + position.coords.longitude;
+}
+</script>
+  <h3>📷 تصوير الفم للتشخيص</h3>
+<video id="camera" width="300" height="200" autoplay></video>
+<canvas id="snapshot" style="display:none;"></canvas>
+<br>
+<button onclick="takeSnapshot()">📸 التقط صورة</button>
+
+<script>
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(function(stream) {
+    document.getElementById('camera').srcObject = stream;
+  })
+  .catch(function(error) {
+    alert("فشل في فتح الكاميرا: " + error);
+  });
+
+function takeSnapshot() {
+  var video = document.getElementById("camera");
+  var canvas = document.getElementById("snapshot");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  alert("📷 تم التقاط الصورة! (الخطوة القادمة: التحليل بالذكاء الاصطناعي)");
+}
+</script>
+});
   </script></body>
-        </html>
+</html>
+
+
+                       
