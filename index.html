@@ -1,152 +1,319 @@
-<!DOCTYPE html><html lang="ar" dir="rtl">
+<!DOCTYPE html><html lang="ar">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Dental</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <title>لوحة الطبيب - Smart Dental</title>
   <style>
-    body { font-family: Arial; background: #f0f0f0; margin: 0; padding: 0; }
-    header { background: #2c3e50; color: white; padding: 1em; text-align: center; }
-    main { display: flex; flex-wrap: wrap; justify-content: center; gap: 2em; padding: 2em; }
-    section { background: white; padding: 1em; border-radius: 10px; width: 350px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2 { color: #2c3e50; }
-    input, select, button { width: 100%; margin-top: 0.5em; padding: 0.5em; border-radius: 5px; border: 1px solid #ccc; }
-    button { background: #27ae60; color: white; border: none; cursor: pointer; }
-    #map { height: 200px; margin-top: 1em; border-radius: 5px; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+      direction: rtl;
+    }
+    h1 {
+      text-align: center;
+      color: #0077cc;
+    }
+    .patient-card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px auto;
+      max-width: 600px;
+      box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+    .patient-card img {
+      max-width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 15px;
+      margin-top: 10px;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    #loginForm {
+      max-width: 400px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+    #loginForm input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
   </style>
-</head>
-<body>
-  <header>
-    <h1>Smart Dental - النظام الذكي لصحة الأسنان</h1>
-  </header>  <main>
-    <!-- واجهة المريض -->
-    <section>
-      <h2>واجهة المريض</h2>
-      <input type="text" id="name" placeholder="الاسم">
-      <input type="number" id="age" placeholder="العمر">
-      <input type="text" id="governorate" placeholder="المحافظة">
-      <input type="text" id="diseases" placeholder="أمراض مزمنة (إن وجدت)">
-      <input type="file" id="image" accept="image/*">
-      <button onclick="sendCase()">أرسل حالتي</button>
-      <button onclick="alert('جاري الاتصال بالطبيب...')">اتصل بالطبيب مجانًا</button>
-      <div id="map"></div>
-    </section><!-- لوحة الطبيب -->
-<section>
-  <h2>لوحة الطبيب</h2>
-  <div id="cases"></div>
-</section>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getFirestore, collection, query, where, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "smart-dental.firebaseapp.com",
+  projectId: "smart-dental",
+  storageBucket: "smart-dental.appspot.com",
+  messagingSenderId: "...",
+  appId: "..."
+};
 
-  </main>  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>  <script>
-    const firebaseConfig = {
-      apiKey: "AIza...YOUR_API_KEY",
-      authDomain: "smart-dental.firebaseapp.com",
-      databaseURL: "https://smart-dental.firebaseio.com",
-      projectId: "smart-dental",
-      storageBucket: "smart-dental.appspot.com",
-      messagingSenderId: "1234567890",
-      appId: "1:1234567890:web:abcd1234"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-    const map = L.map('map').setView([26.8206, 30.8025], 6); // موقع مصر
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
+let currentDoctorPhone = null;
+const container = document.getElementById("patients");
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        L.marker([lat, lng]).addTo(map).bindPopup("موقعك الحالي").openPopup();
-        map.setView([lat, lng], 10);
-      });
-    }
+function playNotificationSound() {
+  const audio = new Audio("https://notificationsounds.com/storage/sounds/file-sounds-1157-pristine.mp3");
+  audio.play();
+}
 
-    function sendCase() {
-      const data = {
-        name: document.getElementById('name').value,
-        age: document.getElementById('age').value,
-        governorate: document.getElementById('governorate').value,
-        diseases: document.getElementById('diseases').value,
-        timestamp: Date.now()
-      };
-      db.ref('cases').push(data).then(() => alert('تم إرسال الحالة للطبيب'));
-    }
+function renderPatient(data) {
+  const card = document.createElement("div");
+  card.className = "patient-card";
+  card.innerHTML = `
+    <h3>🧑‍⚕️ الحالة: ${data.name}</h3>
+    <p><strong>رقم الهاتف:</strong> ${data.phone}</p>
+    <p><strong>الموقع:</strong> ${data.location}</p>
+    <p><strong>الأعراض:</strong> ${data.symptoms}</p>
+    <p><strong>الأمراض المزمنة:</strong> ${data.hasChronic === 'yes' ? data.chronicDisease : 'لا يوجد'}</p>
+    <p><strong>الرقم القومي:</strong> ${data.nationalId}</p>
+    <p><strong>تم تحديدك تلقائيًا كطبيب للحالة.</strong></p>
+    <img src="${data.imageUrl}" alt="صورة المريض" />
+    <a class="btn" href="https://wa.me/${data.phone}" target="_blank">📲 تواصل عبر واتساب</a>
+  `;
+  container.prepend(card);
+}
 
-    db.ref('cases').on('child_added', snap => {
-      const c = snap.val();
-      const box = document.createElement('div');
-      box.style.border = "1px solid #ccc";
-      box.style.marginTop = "1em";
-      box.style.padding = "0.5em";
-      box.innerHTML = `
-        <p><strong>الاسم:</strong> ${c.name}</p>
-        <p><strong>العمر:</strong> ${c.age}</p>
-        <p><strong>المحافظة:</strong> ${c.governorate}</p>
-        <p><strong>أمراض مزمنة:</strong> ${c.diseases}</p>
-        <select>
-          <option>آمنة</option>
-          <option>متوسطة</option>
-          <option selected>طارئة</option>
-        </select>
-        <button onclick="alert('تم إرسال سيارة الطوارئ')">إرسال سيارة طوارئ</button>
-      `;
-      document.getElementById('cases').appendChild(box)
-<a href="tel:01095896349" style="padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 8px;">
-📞 اتصل بنا
-</a>
-<select id="governorate" onchange="getLocation()">
-  <option value="">اختر المحافظة</option>
-  <option value="القاهرة">القاهرة</option>
-  <option value="الجيزة">الجيزة</option>
-  <option value="الإسكندرية">الإسكندرية</option>
-  <!-- ضيف باقي المحافظات هنا -->
-</select>
+function subscribeToPatients() {
+  const q = query(collection(db, "patients"), where("assignedDoctorPhone", "==", currentDoctorPhone));
+  onSnapshot(q, snapshot => {
+    container.innerHTML = '';
+    snapshot.docChanges().forEach(change => {
+      const data = change.doc.data();
+      if (change.type === "added") {
+        renderPatient(data);
+        playNotificationSound();
+        alert(`📣 حالة جديدة تم توجيهها إليك: ${data.name}`);
+      }
+    });
+  });
+}
 
-<p id="locationResult">📍 لم يتم تحديد الموقع بعد</p>
-
-<script>
-function getLocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(showPosition);
-  } else {
-    document.getElementById("locationResult").innerHTML = "المتصفح لا يدعم تحديد الموقع.";
+window.loginDoctor = function(e) {
+  e.preventDefault();
+  const phone = document.getElementById("doctorPhone").value;
+  if (phone.trim()) {
+    currentDoctorPhone = phone;
+    document.getElementById("loginForm").style.display = "none";
+    container.style.display = "block";
+    subscribeToPatients();
   }
 }
 
-function showPosition(position) {
-  document.getElementById("locationResult").innerHTML =
-    "📍 إحداثيات الموقع: " + position.coords.latitude + ", " + position.coords.longitude;
-}
-</script>
-  <h3>📷 تصوير الفم للتشخيص</h3>
-<video id="camera" width="300" height="200" autoplay></video>
-<canvas id="snapshot" style="display:none;"></canvas>
-<br>
-<button onclick="takeSnapshot()">📸 التقط صورة</button>
+  </script>
+</head>
+<body>
+  <h1>لوحة التحكم - الطبيب</h1>
+  <div id="loginForm">
+    <h3>تسجيل دخول الطبيب</h3>
+    <form onsubmit="loginDoctor(event)">
+      <label>رقم هاتفك (كما هو مسجل):</label>
+      <input type="tel" id="doctorPhone" placeholder="مثال: +201001234567" required>
+      <button class="btn" type="submit">عرض الحالات</button>
+    </form>
+  </div>  <div id="patients" style="display:none;"></div>
+</body>
+</html>
+<!DOCTYPE html><html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>واجهة المريض - Smart Dental</title>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { getStorage, ref, uploadString, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "smart-dental.firebaseapp.com",
+  projectId: "smart-dental",
+  storageBucket: "smart-dental.appspot.com",
+  messagingSenderId: "...",
+  appId: "..."
+};
 
-<script>
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(function(stream) {
-    document.getElementById('camera').srcObject = stream;
-  })
-  .catch(function(error) {
-    alert("فشل في فتح الكاميرا: " + error);
-  });
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-function takeSnapshot() {
-  var video = document.getElementById("camera");
-  var canvas = document.getElementById("snapshot");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  alert("📷 تم التقاط الصورة! (الخطوة القادمة: التحليل بالذكاء الاصطناعي)");
+let geoLocation = { lat: null, lng: null };
+
+navigator.geolocation.getCurrentPosition(
+  (pos) => {
+    geoLocation.lat = pos.coords.latitude;
+    geoLocation.lng = pos.coords.longitude;
+  },
+  (err) => {
+    alert("تعذر تحديد الموقع تلقائيًا. يرجى تمكين GPS.");
+  }
+);
+
+window.submitForm = async function(e) {
+  e.preventDefault();
+  const name = document.getElementById('name').value;
+  const phone = document.getElementById('phone').value;
+  const location = document.getElementById('location').value;
+  const symptoms = document.getElementById('symptoms').value;
+  const hasChronic = document.getElementById('hasChronic').value;
+  const chronicDisease = document.getElementById('chronicDisease').value || 'لا يوجد';
+  const nationalId = document.getElementById('nationalId').value || 'غير مُسجل';
+  const imageData = document.getElementById('snapshot').src;
+
+  try {
+    const imgRef = ref(storage, `patients/${Date.now()}.png`);
+    await uploadString(imgRef, imageData, 'data_url');
+    const imageUrl = await getDownloadURL(imgRef);
+
+    await addDoc(collection(db, "patients"), {
+      name,
+      phone,
+      location,
+      symptoms,
+      hasChronic,
+      chronicDisease,
+      nationalId,
+      imageUrl,
+      latitude: geoLocation.lat,
+      longitude: geoLocation.lng,
+      timestamp: serverTimestamp()
+    });
+
+    alert("✅ تم إرسال الحالة بنجاح وسيتم تحويلها لأقرب عيادة.");
+    document.querySelector("form").reset();
+    document.getElementById("snapshot").style.display = "none";
+  } catch (error) {
+    console.error("❌ خطأ في إرسال البيانات:", error);
+    alert("حدث خطأ أثناء إرسال البيانات. حاول مرة أخرى.");
+  }
 }
-</script>
-});
+
+  </script>
+  <style>
+    body {
+      font-family: Arial;
+      background-color: #f7f7f7;
+      direction: rtl;
+      padding: 20px;
+    }
+    h1 {
+      color: #0077cc;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #0077cc;
+      color: white;
+      font-weight: bold;
+      margin-top: 15px;
+      cursor: pointer;
+    }
+    video, canvas, img {
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>تسجيل حالة جديدة</h1>
+  <form onsubmit="submitForm(event)">
+    <label>الاسم الكامل:</label>
+    <input type="text" id="name" required><label>رقم الهاتف:</label>
+<input type="tel" id="phone" required>
+
+<label>المحافظة / الموقع:</label>
+<input type="text" id="location" required>
+
+<label>الأعراض:</label>
+<textarea id="symptoms" rows="3" required></textarea>
+
+<label>هل تعاني من أمراض مزمنة؟</label>
+<select id="hasChronic" onchange="toggleChronicInput(this.value)">
+  <option value="no">لا</option>
+  <option value="yes">نعم</option>
+</select>
+
+<div id="chronicDetails" style="display:none;">
+  <label>اذكر المرض:</label>
+  <input type="text" id="chronicDisease" placeholder="مثلاً: سكر، ضغط">
+</div>
+
+<label>الرقم القومي (اختياري):</label>
+<input type="text" id="nationalId" maxlength="14" placeholder="إن وُجد">
+
+<label>التقاط صورة:</label>
+<select id="cameraSelect">
+  <option value="user">📱 أمامية</option>
+  <option value="environment">📷 خلفية</option>
+</select>
+
+<video id="video" autoplay></video>
+<button type="button" onclick="takeSnapshot()">📸 التقط صورة</button>
+<canvas id="canvas" style="display:none;"></canvas>
+<img id="snapshot" alt="الصورة الملتقطة" style="display:none;"/>
+
+<button type="submit">إرسال الحالة</button>
+
+  </form>  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const snapshot = document.getElementById('snapshot');
+    const cameraSelect = document.getElementById('cameraSelect');
+
+    async function startCamera(facingMode) {
+      const constraints = { video: { facingMode } };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+    }
+
+    function takeSnapshot() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      snapshot.src = canvas.toDataURL('image/png');
+      snapshot.style.display = 'block';
+    }
+
+    function toggleChronicInput(value) {
+      document.getElementById('chronicDetails').style.display = (value === 'yes') ? 'block' : 'none';
+    }
+
+    cameraSelect.addEventListener('change', () => {
+      startCamera(cameraSelect.value);
+    });
+
+    startCamera('user');
   </script></body>
 </html>
-
-
-                       
+<div style="margin-top: 30px; font-size: 15px;">
+  📞 خدمة العملاء: 01095896349 / 0122 222 2222<br>
+  📧 البريد الإلكتروني: support@smartdental.eg
+</div>
