@@ -93,3 +93,80 @@
     });
   </script></body>
 </html>
+<!DOCTYPE html><html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم الطبيب</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #00acc1;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    .container {
+      padding: 2rem;
+      max-width: 800px;
+      margin: auto;
+    }
+    .case {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+    }
+    .case h3 {
+      margin: 0 0 0.5rem 0;
+      color: #007c91;
+    }
+    .case p {
+      margin: 0.3rem 0;
+    }
+  </style>
+</head>
+<body>
+  <header>لوحة تحكم الطبيب</header>  <div class="container" id="casesContainer">
+    <p>جاري تحميل الحالات...</p>
+  </div>  <script>
+    // بيانات تجريبية للحالات
+    const cases = [
+      {
+        name: "أحمد علي",
+        phone: "01012345678",
+        description: "ألم شديد في الضرس الخلفي",
+        image: "https://via.placeholder.com/150"
+      },
+      {
+        name: "سارة محمد",
+        phone: "01198765432",
+        description: "نزيف بسيط بعد الخلع",
+        image: "https://via.placeholder.com/150"
+      }
+    ];
+
+    const container = document.getElementById("casesContainer");
+    container.innerHTML = "";
+
+    cases.forEach((c, i) => {
+      const caseDiv = document.createElement("div");
+      caseDiv.className = "case";
+      caseDiv.innerHTML = `
+        <h3>الحالة #${i + 1}</h3>
+        <p><strong>الاسم:</strong> ${c.name}</p>
+        <p><strong>رقم الهاتف:</strong> ${c.phone}</p>
+        <p><strong>الوصف:</strong> ${c.description}</p>
+        <img src="${c.image}" alt="صورة الحالة" width="150">
+      `;
+      container.appendChild(caseDiv);
+    });
+  </script></body>
+</html>
